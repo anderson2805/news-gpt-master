@@ -33,6 +33,7 @@ def generate_section(context, role: str = "", topic: str = "", form: str = "5 no
     
 def generate_newsletter(query_dict: List[dict], topic_desc: List[dict] = topic_desc,
                   role: str = role, form_type: dict = form_type, max_articles_section: int = 10, template : str = template) -> List[dict]:
+
     """
     Generate a weekly newsletter containing summaries of news articles based on different topics.
 
@@ -46,13 +47,19 @@ def generate_newsletter(query_dict: List[dict], topic_desc: List[dict] = topic_d
 
     Returns:
         List[dict]: A list of dictionaries containing the 'topic', 'prompt', and 'response' for each section.
+
+    TODO: Customise the prompt based on the template = "Topic", need to adjust getsummaryandtopics function
     """
     MAX_ARTICLE_TO_ANALYSE = 40
     newsletter = []
     queryDf = pd.DataFrame(query_dict)[:MAX_ARTICLE_TO_ANALYSE]
     # apply getsummaryregion to each row of the queryDf title and contentdescription columns, output will be a dictionary with keys 'summary' and 'news_area, and store the result in the two columns
+    if template == 'predefined':
+        topic_desc_str = ', '.join([f"{item['topic']} = {item['description']}" for item in topic_desc])
+    elif template == 'topic':
+        topic_desc_str = ', '.join([f"{item['topic']}" for item in topic_desc])
     queryDf[['summary', 'topic']] = queryDf.progress_apply(lambda x: pd.Series(
-        getSummaryAndTopics(x['contentdescription'], topic_desc=topic_desc)), axis=1)
+        getSummaryAndTopics(x['contentdescription'], topic_desc_str=topic_desc_str)), axis=1)
 
     for desc in topic_desc:
         sectionDf = queryDf[queryDf['topic'].str.contains(desc['topic'])]

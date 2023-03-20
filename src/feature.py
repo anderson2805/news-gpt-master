@@ -6,12 +6,11 @@ from langchain.chains.question_answering import load_qa_chain
 from langchain.llms.openai import OpenAI
 
 
-def getSummaryAndTopics(doc, topic_desc: List[dict], role: str = "Singapore military analyst", prompt: str = ""):
+def getSummaryAndTopics(doc, topic_desc_str: str, role: str = "Singapore military analyst", prompt: str = ""):
     llm = OpenAI() # type: ignore
     doc_list = [Document(page_content=doc)]
-    descript_str = ', '.join([f"{item['topic']} = {item['description']}" for item in topic_desc])
     if prompt == "":
-        prompt = f"""You are a {role}. Summarised the news in 200 words, and news area ({descript_str}). In this format, Summary: <summary>, News Topic: <news topic>
+        prompt = f"""You are a {role}. Summarised the news in 200 words, and news area ({topic_desc_str}). In this format, Summary: <summary>, News Topic: <news topic>
         """
     chain = load_qa_chain(llm, chain_type="stuff")
     output = chain.run(input_documents= doc_list, question=prompt) # type: ignore
@@ -31,8 +30,9 @@ def getTopics(title_context, prompt_parameter : dict = {} , prompt: str = ""):
         role = prompt_parameter['role']
         top_n = prompt_parameter['top_n']
         topic_length = prompt_parameter['topic_length']
-        prompt = f"""I am a {role}. List down {top_n} most impactful/concerning and distinctive topics (max {topic_length} words) from the news. In this format, Topics: [<topic 1> : <topic 1 description>, ..., <topic {top_n}> : <topic {top_n} description>]
-        """
+        prompt = f"""As a {role}, please identify the top {top_n} most pressing and unique topics in the news . Use the following format to list each topic along with a brief description in {topic_length} words or less: Topics: [<Topic 1>: <Description 1>, ..., <Topic {top_n}>: <Description {top_n}>]"""
+        #prompt = f"""I am a {role}. List down {top_n} most impactful/concerning and distinctive topics (max {topic_length} words) from the news. In this format, Topics: [<topic 1> : <topic 1 description>, ..., <topic {top_n}> : <topic {top_n} description>]
+        #"""
     chain = load_qa_chain(llm, chain_type="stuff")
     output = chain.run(input_documents= doc, question=prompt) # type: ignore
     topics = output.split("Topics:")[1].strip().replace("[","").replace("]","").replace("'","").split(", ")
