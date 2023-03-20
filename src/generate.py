@@ -8,16 +8,20 @@ from tqdm import tqdm
 tqdm.pandas()
 
 
-topic_desc = [{'topic': 'LOCAL', 'description': 'news about Singapore', 'prompt': ""}, {'topic': 'GLOBAL', 'description': 'news about other countries'}, {
-    'topic': 'PROCUREMENT', 'description': 'news about procurement/purchase'}, {'topic': 'TECHNOLOGY', 'description': 'news about technology'}]
+topic_desc = [{'topic': 'LOCAL', 'description': 'news about Singapore', 'prompt': ""}, 
+              {'topic': 'GLOBAL', 'description': 'news about other countries'}, 
+              {'topic': 'PROCUREMENT', 'description': 'news about procurement/purchase'}, 
+              {'topic': 'TECHNOLOGY', 'description': 'news about technology'}]
 role = 'Singapore military analyst'
-form_type = {'type': 'bullet points', 'parameter': None} #numbered points, paragraphs, words summary, words synopsis
+# numbered points, paragraphs, words summary, words synopsis
+form_type = {'type': 'bullet points', 'parameter': None}
 template = 'predefined'
 
 
 def generate_section(context, role: str = "", topic: str = "", form: str = "5 non-numbered point forms", prompt: str = ""):
     if not (role or topic) and not prompt:
-        raise ValueError("Either 'role' and 'topic' or 'prompt' must be provided.")
+        raise ValueError(
+            "Either 'role' and 'topic' or 'prompt' must be provided.")
     else:
         default_prompt = f"You are a {role}. Based on the context, generate a weekly news summary for management about most impactful/concerning/dispute {topic} news in {form}. At the end of generation reply <END>. In this format, {topic} News: <summaries>."
         if not prompt:
@@ -29,11 +33,12 @@ def generate_section(context, role: str = "", topic: str = "", form: str = "5 no
                 {"role": "user", "content": f"Context: {context} \n {prompt}"}
             ]
         )
+        
         return {'topic': topic, 'prompt': prompt, 'response': response['choices'][0]['message']['content'].split("<END>")[0]} # type: ignore
-    
-def generate_newsletter(query_dict: List[dict], topic_desc: List[dict] = topic_desc,
-                  role: str = role, form_type: dict = form_type, max_articles_section: int = 10, template : str = template) -> List[dict]:
 
+
+def generate_newsletter(query_dict: List[dict], topic_desc: List[dict] = topic_desc,
+                        role: str = role, form_type: dict = form_type, max_articles_section: int = 10, template: str = template) -> List[dict]:
     """
     Generate a weekly newsletter containing summaries of news articles based on different topics.
 
@@ -55,26 +60,32 @@ def generate_newsletter(query_dict: List[dict], topic_desc: List[dict] = topic_d
     queryDf = pd.DataFrame(query_dict)[:MAX_ARTICLE_TO_ANALYSE]
     # apply getsummaryregion to each row of the queryDf title and contentdescription columns, output will be a dictionary with keys 'summary' and 'news_area, and store the result in the two columns
     if template == 'predefined':
-        topic_desc_str = ', '.join([f"{item['topic']} = {item['description']}" for item in topic_desc])
+        topic_desc_str = ', '.join(
+            [f"{item['topic']} = {item['description']}" for item in topic_desc])
     elif template == 'topic':
         topic_desc_str = ', '.join([f"{item['topic']}" for item in topic_desc])
     queryDf[['summary', 'topic']] = queryDf.progress_apply(lambda x: pd.Series(
         getSummaryAndTopics(x['contentdescription'], topic_desc_str=topic_desc_str)), axis=1)
 
     for desc in topic_desc:
-        sectionDf = queryDf[queryDf['topic'].str.contains(desc['topic'])]
+        sectionDf = queryDf[queryDf['topic'].str.contains(desc['topic'].upper())]
 
-        form_parameter = form_type['parameter'] if form_type['parameter'] is not None else min(5, len(sectionDf))
+        form_parameter = form_type['parameter'] if form_type['parameter'] is not None else min(
+            5, len(sectionDf))
         form = f"{form_parameter} {form_type.get('type', '')}"
 
         if(len(sectionDf) == 0):
             section_dict = {'topic': desc['topic'], 'prompt': 'NA',
                             'response': 'No news to report.'}
         else:
-            context = concatContext(sectionDf.iloc[:max_articles_section][['summary']]) # if we are requesting reference from ChatGPT response, we need to provide it in context
-            section_dict = generate_section(context, role = role, topic = desc['topic'], form = form, prompt = desc.get('prompt',''))
+            # if we are requesting reference from ChatGPT response, we need to provide it in context
+            context = concatContext(
+                sectionDf.iloc[:max_articles_section][['summary']])
+            section_dict = generate_section(
+                context, role=role, topic=desc['topic'], form=form, prompt=desc.get('prompt', ''))
         newsletter.append(section_dict)
     return newsletter
+
 
 if __name__ == "__main__":
     import json
