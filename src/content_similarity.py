@@ -11,48 +11,57 @@ warnings.filterwarnings("ignore")
 embed = hub.load('./model/universal-sentence-encoder-large/5')
 
 
-def similar_contents(contentlists: List[str]) -> Dict[int, List[int]]:
+def similar_contents(contentlists: List[str], seedcontent: str = "", similar_threshold: int = 0.75) -> Dict[int, List[int]]:
     """
-    Given a list of content descriptions, computes pairwise similarity between them and groups them based on a threshold.
+    Given a list of content descriptions, computes pairwise similarity between them 
+    and groups them based on a threshold.
 
     Args:
     - contentlists (list of str): A list of content descriptions.
+    - seedcontent (str): A content description to compare the contentlist against. 
+      Default is empty string.
+    - similar_threshold (float): Threshold for similarity score to consider two contents similar. 
+      Default is 0.75.
 
     Returns:
-    - similar_dict (dict): A dictionary where the keys are the indices of the content descriptions and the values are
-      lists of indices of other content descriptions that are similar to the content description at the key index.
+    - similar_dict (dict): A dictionary where the keys are the indices of the content descriptions and 
+      the values are lists of indices of other content descriptions that are similar to the content description 
+      at the key index.
 
     Example:
     >>> contentlists = ['This is a sample text.', 'This text is similar to the previous one.', 'This is another text.']
     >>> similar_contents(contentlists)
     {0: [0, 1], 1: [0, 1], 2: [2]}
-
     """
-    embeddings = embed(contentlists)  # type: ignore
+    embeddings = embed(contentlists)
+    if seedcontent:
+        seed_embeddings = embed([seedcontent])
+        compare = np.inner(seed_embeddings, embeddings)
+    else:
+        compare = np.inner(embeddings, embeddings)
     similar_dict = {}
-    for index, row in enumerate(np.inner(embeddings, embeddings)):
-        similar = []
-        for sim_index, item in enumerate(row):
-            if item >= 0.75:
-                similar.append(sim_index)
+    for index, row in enumerate(compare):
+        similar = [sim_index for sim_index, item in enumerate(row) if item >= similar_threshold]
         similar_dict[index] = similar
     return similar_dict
 
 
 # group articles with similar contentdescription, and return a dataframe.
-def group_articles(contents: pd.DataFrame) -> pd.DataFrame:
+def group_articles(contents: List[Dict[str, str, int]]) -> pd.DataFrame:
     """
-    Groups articles with similar content descriptions and returns a dataframe.
+    Groups articles with similar content descriptions and returns a DataFrame.
 
     Args:
-    - contents (list of dict): A list of dictionaries where each dictionary represents an article and has the following keys:
+    - contents (List[Dict[str, str, int]]): A list of dictionaries where each dictionary represents an article and 
+      has the following keys:
         - 'contentdescription' (str): The content description of the article.
         - 'publisheddate' (str): The date the article was published.
         - 'duplicates' (int): The number of duplicates of the article.
 
     Returns:
-    - filteredDf (pandas DataFrame): A dataframe where each row represents an article and has the following columns:
-        - 'contentdescription' (str): The content description of the article or the concatenated content descriptions of a group of similar articles.
+    - filtered_df (pandas DataFrame): A dataframe where each row represents an article and has the following columns:
+        - 'contentdescription' (str): The content description of the article or the concatenated content descriptions 
+          of a group of similar articles.
         - 'publisheddate' (str): The date the article was published.
         - 'duplicates' (int): The number of duplicates of the article or the sum of duplicates of a group of similar articles.
         - 'group' (int): The group ID of the article if it belongs to a group or -1 if it does not belong to a group.

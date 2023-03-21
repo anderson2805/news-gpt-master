@@ -7,6 +7,7 @@ from utils import concatContext
 from tqdm import tqdm
 tqdm.pandas()
 
+MAX_ARTICLE_TO_ANALYSE = 40
 
 topic_desc = [{'topic': 'LOCAL', 'description': 'news about Singapore', 'prompt': ""}, 
               {'topic': 'GLOBAL', 'description': 'news about other countries'}, 
@@ -55,7 +56,7 @@ def generate_newsletter(query_dict: List[dict], topic_desc: List[dict] = topic_d
 
     TODO: Customise the prompt based on the template = "Topic", need to adjust getsummaryandtopics function
     """
-    MAX_ARTICLE_TO_ANALYSE = 40
+    
     newsletter = []
     queryDf = pd.DataFrame(query_dict)[:MAX_ARTICLE_TO_ANALYSE]
     # apply getsummaryregion to each row of the queryDf title and contentdescription columns, output will be a dictionary with keys 'summary' and 'news_area, and store the result in the two columns
